@@ -56,6 +56,7 @@ module.exports = class Umzug extends EventEmitter {
       logging: false,
       upName: 'up',
       downName: 'down',
+      skipTargetMigrationCheck: false,
       ...options,
     };
 
@@ -73,6 +74,8 @@ module.exports = class Umzug extends EventEmitter {
         ...this.options.migrations,
       };
     }
+
+    this.skipTargetMigrationCheck = this.options.skipTargetMigrationCheck;
 
     this.storage = this._initStorage();
   }
@@ -294,6 +297,10 @@ module.exports = class Umzug extends EventEmitter {
                 return this._findMigration(options.to);
               })
               .then(function (migration) {
+                // Non-standard, used for kikoeru-express project
+                if (this.skipTargetMigrationCheck) {
+                  return Bluebird.resolve();
+                }
                 // ... and it must be pending/executed.
                 return method === 'up'
                   ? this._isPending(migration)
@@ -567,6 +574,9 @@ module.exports = class Umzug extends EventEmitter {
    * @private
    */
   _findMigrationsUntilMatch (to, migrations) {
+    if (migrations.length && migrations[0].file > to) {
+        return Bluebird.resolve([])
+    }
     return Bluebird.resolve(migrations)
       .map((migration) => migration.file)
       .reduce((acc, migration) => {
